@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "chalkboard:block/chalkboard",
+      "y": 0
+    },
+    "facing=east": {
+      "model": "chalkboard:block/chalkboard",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "chalkboard:block/chalkboard",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "chalkboard:block/chalkboard",
+      "y": 270
+    }
+  }
+}
