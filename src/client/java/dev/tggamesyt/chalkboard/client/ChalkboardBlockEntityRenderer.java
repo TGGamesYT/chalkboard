@@ -2,6 +2,7 @@ package dev.tggamesyt.chalkboard.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.math.Axis;
 import dev.tggamesyt.chalkboard.chalkboard.ChalkboardBlockEntity;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -11,6 +12,7 @@ import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -51,29 +53,27 @@ public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<Chalkb
         if (!state.hasContent) return;
 
         // Use the moving block type - it's designed to stay in world coordinates
-        collector.submitCustomGeometry(ps, RenderTypes.translucentMovingBlock(), (pose, vc) -> {
-            ps.pushPose();
+        collector.submitCustomGeometry(ps, RenderTypes.beaconBeam(Identifier.fromNamespaceAndPath("chalkboard", "textures/etc/white.png"), false), (pose, vc) -> {
+            Matrix4f m4 = new Matrix4f(pose.pose()); // copy the snapshot
 
-            // 1. Move to the center of the block
-            ps.translate(0.5f, 0.5f, 0.5f);
+// apply transforms manually to the matrix
+            m4.translate(0.5f, 0.5f, 0.5f);
 
-            // 2. Rotate based on block facing
             float yaw = switch (state.facing) {
                 case SOUTH -> 180f;
                 case WEST  -> 90f;
                 case EAST  -> -90f;
-                default    -> 0f; // NORTH
+                default    -> 0f;
             };
-            ps.mulPose(com.mojang.math.Axis.YP.rotationDegrees(yaw));
 
-            // 3. Move back to the corner
-            ps.translate(-0.5f, -0.5f, -0.5f);
+            m4.rotate(com.mojang.math.Axis.YP.rotationDegrees(yaw));
+            m4.translate(-0.5f, -0.5f, -0.5f);
 
-            PoseStack.Pose currentPose = ps.last();
-            Matrix4f m4 = currentPose.pose();
+// keep normals from original pose
+            PoseStack.Pose currentPose = pose;
 
             // Z-offset to sit on the face (1.0 is the front edge)
-            final float Z = 1.001f;
+            final float Z = 0.999f - (1f /16f);
             final float SZ = 1f / 16f;
 
             for (int row = 0; row < 16; row++) {
@@ -96,7 +96,6 @@ public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<Chalkb
                     vert(vc, m4, currentPose, x0, y0, Z, r, g, b, a, state.lightCoords);
                 }
             }
-            ps.popPose();
         });
     }
 
