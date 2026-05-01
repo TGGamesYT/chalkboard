@@ -3,9 +3,9 @@
 	"id": "chalkboard",
 	"version": "${version}",
 	"name": "chalkboard",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "Adds chalkboard and chalk",
 	"authors": [
-		"Me!"
+		"TGdoesCode"
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"dev.tggamesyt.chalkboard.Chalkboard"
+			"dev.tggamesyt.chalkboard.ChalkboardMod"
 		],
 		"client": [
 			"dev.tggamesyt.chalkboard.client.ChalkboardClient"

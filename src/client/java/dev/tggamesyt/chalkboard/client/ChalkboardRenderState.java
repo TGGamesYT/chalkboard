@@ -1,6 +1,6 @@
 package dev.tggamesyt.chalkboard.client;
 
-import dev.tggamesyt.chalkboard.chalkboard.ChalkboardBlock;
+import dev.tggamesyt.chalkboard.ChalkboardBlock;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.core.Direction;
 

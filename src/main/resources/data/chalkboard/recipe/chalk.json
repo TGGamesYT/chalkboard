@@ -5,8 +5,5 @@
     "minecraft:bone_meal",
     "minecraft:bone_meal"
   ],
-  "result": {
-    "id": "minecraft:bone_meal",
-    "count": 3
-  }
+  "result": "chalkboard:chalk"
 }

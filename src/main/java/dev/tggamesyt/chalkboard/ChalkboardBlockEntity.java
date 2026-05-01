@@ -1,4 +1,4 @@
-package dev.tggamesyt.chalkboard.chalkboard;
+package dev.tggamesyt.chalkboard;
 
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.BlockPos;
@@ -20,10 +20,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 
-/**
- * Holds a 16x16 grid of ARGB colours (int[] pixels).
- * 0 = transparent / not drawn.  Persisted in NBT and synced to clients.
- */
 public class ChalkboardBlockEntity extends BlockEntity {
 
     public static final BlockEntityType<ChalkboardBlockEntity> TYPE = register();
@@ -39,6 +35,22 @@ public class ChalkboardBlockEntity extends BlockEntity {
     public void drawPixel(int x, int y, int argb) {
         if (x < 0 || x > 15 || y < 0 || y > 15) return;
         pixels[y * 16 + x] = argb;
+        setChanged();
+    }
+
+    public void clearPixel(int x, int y) {
+        if (x < 0 || x > 15 || y < 0 || y > 15) return;
+        pixels[y * 16 + x] = 0;
+        setChanged();
+    }
+
+    public void clearRadius(int cx, int cy, int radius) {
+        for (int x = cx - radius; x <= cx + radius; x++) {
+            for (int y = cy - radius; y <= cy + radius; y++) {
+                if (x < 0 || x > 15 || y < 0 || y > 15) continue;
+                pixels[y * 16 + x] = 0;
+            }
+        }
         setChanged();
     }
 
@@ -78,11 +90,8 @@ public class ChalkboardBlockEntity extends BlockEntity {
                 BuiltInRegistries.BLOCK_ENTITY_TYPE,
                 Identifier.fromNamespaceAndPath(ChalkboardMod.ID, "chalkboard_be"),
                 FabricBlockEntityTypeBuilder.create(ChalkboardBlockEntity::new,
-                        // Use a Supplier or handle the block reference carefully
                         ChalkboardMod.CHALKBOARD
                 ).build()
         );
     }
-
-    public static void registerAll() {}
 }

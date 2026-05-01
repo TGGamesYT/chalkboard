@@ -1,15 +1,22 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "PPP",
-    "PSP",
-    "PPP"
+    "WDG",
+    "WDG",
+    "WDG"
   ],
   "key": {
-    "P": "#minecraft:planks",
-    "S": "minecraft:stick"
+    "W": "#minecraft:logs",
+    "D": [
+      "minecraft:polished_deepslate"
+    ],
+    "G": [
+      "minecraft:lime_dye",
+      "minecraft:green_dye"
+    ]
   },
   "result": {
-    "id": "chalkboard:chalkboard"
+    "id": "chalkboard:chalkboard",
+    "count": 12
   }
 }

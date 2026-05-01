@@ -3,7 +3,7 @@ package dev.tggamesyt.chalkboard.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import dev.tggamesyt.chalkboard.chalkboard.ChalkboardBlockEntity;
+import dev.tggamesyt.chalkboard.ChalkboardBlockEntity;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -72,8 +72,7 @@ public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<Chalkb
 // keep normals from original pose
             PoseStack.Pose currentPose = pose;
 
-            // Z-offset to sit on the face (1.0 is the front edge)
-            final float Z = 0.999f - (1f /16f);
+            final float Z = (6f / 16f) - 0.001f;
             final float SZ = 1f / 16f;
 
             for (int row = 0; row < 16; row++) {
@@ -89,7 +88,6 @@ public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<Chalkb
                     float x0 = col * SZ, x1 = x0 + SZ;
                     float y0 = 1f - (row + 1) * SZ, y1 = y0 + SZ;
 
-                    // IMPORTANT: The 'moving block' type expects FULL vertex data
                     vert(vc, m4, currentPose, x0, y1, Z, r, g, b, a, state.lightCoords);
                     vert(vc, m4, currentPose, x1, y1, Z, r, g, b, a, state.lightCoords);
                     vert(vc, m4, currentPose, x1, y0, Z, r, g, b, a, state.lightCoords);
