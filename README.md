@@ -1,9 +1,14 @@
 # chalkboard
+<img src="src/main/resources/assets/chalkboard/image.png">
 
-## Setup
+## Additions
 
-For setup instructions, please see the [Fabric Documentation page](https://docs.fabricmc.net/develop/getting-started/creating-a-project#setting-up) related to the IDE that you are using.
+### Chalkboard Block
+<img src="src/main/resources/assets/chalkboard/craft_chalkboard.png">
 
-## License
+### Chalk
+<img src="src/main/resources/assets/chalkboard/craft_chalk.png">
+<img src="src/main/resources/assets/chalkboard/craft_chalkdye.png">
 
-This template is available under the CC0 license. Feel free to learn from it and incorporate it in your own projects.
+## Mechanics
+Use chalk on chalkboard to draw, use sponge to clear it, or use a wet sponge to clear bigger area
