@@ -1,6 +1,5 @@
 package dev.tggamesyt.chalkboard;
 
-import net.minecraft.world.entity.player.Player;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
@@ -14,6 +13,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -22,7 +22,8 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 public class ChalkboardMod implements ModInitializer {
@@ -57,9 +58,13 @@ public class ChalkboardMod implements ModInitializer {
         return Blocks.register(key, factory, settings.setId(key));
     }
 
-    private static final Map<UUID, LastPoint> LAST_POINTS = new HashMap<>();
+    private static class LastPoint {
+        BlockPos pos;
+        int x, y;
+        long tick;
+    }
 
-    private record LastPoint(BlockPos pos, int x, int y, long tick) {}
+    private static final Map<Player, LastPoint> LAST_POINTS = new HashMap<>();
 
     @Override
     public void onInitialize() {
@@ -98,7 +103,7 @@ public class ChalkboardMod implements ModInitializer {
                         var state = level.getBlockState(pos);
                         var facing = state.getValue(ChalkboardBlock.FACING);
 
-                        Vec3 relativeHit = payload.hit().subtract(pos.getX(), pos.getY(), pos.getZ());
+                        var relativeHit = payload.hit().subtract(pos.getX(), pos.getY(), pos.getZ());
 
                         double u = switch (facing) {
                             case SOUTH -> 1.0 - relativeHit.x;
@@ -112,77 +117,80 @@ public class ChalkboardMod implements ModInitializer {
                         int px = Math.max(0, Math.min(15, (int)(u * 16)));
                         int py = 15 - Math.max(0, Math.min(15, (int)(v * 16)));
 
-                        UUID id = player.getUUID();
-                        long tick = level.getGameTime();
+                        long currentTick = level.getGameTime();
 
-                        LastPoint last = LAST_POINTS.get(id);
+                        LastPoint last = LAST_POINTS.get(player);
 
-                        if (last != null &&
-                                last.pos().equals(pos) &&
-                                tick - last.tick() <= 1 &&
-                                item instanceof ChalkItem) {
+                        boolean changedAny = false;
 
-                            drawLine(level, pos, state, player, stack, cbe,
-                                    last.x(), last.y(), px, py);
+                        if (last != null && currentTick - last.tick <= 1) {
+                            int dx = px - last.x;
+                            int dy = py - last.y;
+
+                            int steps = Math.max(Math.abs(dx), Math.abs(dy));
+
+                            for (int i = 0; i <= steps; i++) {
+                                int x = last.x + dx * i / steps;
+                                int y = last.y + dy * i / steps;
+
+                                changedAny |= applyPixel(level, pos, player, stack, x, y);
+                            }
                         } else {
-                            ChalkboardBlock.handleInteraction(
-                                    level, pos, state, player,
-                                    net.minecraft.world.InteractionHand.MAIN_HAND,
-                                    stack, cbe, px, py
-                            );
+                            changedAny |= applyPixel(level, pos, player, stack, px, py);
                         }
 
-                        LAST_POINTS.put(id, new LastPoint(pos, px, py, tick));
+                        LastPoint now = new LastPoint();
+                        now.pos = pos;
+                        now.x = px;
+                        now.y = py;
+                        now.tick = currentTick;
+                        LAST_POINTS.put(player, now);
+
+                        if (changedAny) {
+                            level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
+                        }
                     });
                 }
         );
     }
 
-    private static void drawLine(Level level, BlockPos pos, BlockState state,
-                                 Player player, ItemStack stack,
-                                 ChalkboardBlockEntity cbe,
-                                 int x0, int y0, int x1, int y1) {
+    private static boolean applyPixel(Level level, BlockPos pos, Player player, ItemStack stack, int x, int y) {
+        BlockPos currentPos = pos;
+        int px = x;
+        int py = y;
 
-        int dx = Math.abs(x1 - x0);
-        int dy = Math.abs(y1 - y0);
-
-        int sx = x0 < x1 ? 1 : -1;
-        int sy = y0 < y1 ? 1 : -1;
-
-        int err = dx - dy;
-
-        while (true) {
-            applyPixel(level, pos, state, player, stack, cbe, x0, y0);
-
-            if (x0 == x1 && y0 == y1) break;
-
-            int e2 = 2 * err;
-
-            if (e2 > -dy) {
-                err -= dy;
-                x0 += sx;
-            }
-
-            if (e2 < dx) {
-                err += dx;
-                y0 += sy;
+        while (px < 0 || px > 15) {
+            if (px < 0) {
+                currentPos = currentPos.relative(Direction.WEST);
+                px += 16;
+            } else {
+                currentPos = currentPos.relative(Direction.EAST);
+                px -= 16;
             }
         }
-    }
 
-    private static void applyPixel(Level level, BlockPos pos, BlockState state,
-                                   Player player, ItemStack stack,
-                                   ChalkboardBlockEntity cbe,
-                                   int px, int py) {
+        while (py < 0 || py > 15) {
+            if (py < 0) {
+                currentPos = currentPos.relative(Direction.DOWN);
+                py += 16;
+            } else {
+                currentPos = currentPos.relative(Direction.UP);
+                py -= 16;
+            }
+        }
 
-        if (!(stack.getItem() instanceof ChalkItem)) return;
+        if (!(level.getBlockEntity(currentPos) instanceof ChalkboardBlockEntity cbe)) return false;
 
+        int index = py * 16 + px;
+        int oldColor = cbe.getPixels()[index];
         int newColor = ChalkItem.getColor(stack);
-        int oldColor = cbe.getPixels()[py * 16 + px];
 
-        if (oldColor == newColor) return;
+        if (oldColor == newColor) return false;
 
         cbe.drawPixel(px, py, newColor);
+
         stack.hurtAndBreak(1, player, net.minecraft.world.InteractionHand.MAIN_HAND);
+
+        return true;
     }
 }
