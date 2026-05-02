@@ -1,5 +1,6 @@
 package dev.tggamesyt.chalkboard;
 
+import net.minecraft.world.entity.player.Player;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
