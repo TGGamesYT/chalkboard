@@ -13,4 +13,8 @@ this mod adds a chalkboard block and a chalk item that can be dyed any color
 <img src="https://raw.githubusercontent.com/TGGamesYT/chalkboard/main/src/main/resources/assets/chalkboard/craft_chalkdye.png" alt="Crafting recipe showing chalk combined with dye to change its color">
 
 ## Mechanics
-Use chalk on chalkboard to draw, use sponge to clear it, or use a wet sponge to clear bigger area
+- Use chalk on chalkboard to draw
+- use sponge to clear it
+- use a wet sponge to clear bigger area
+- use honeycomb to lock modification of chalkboard
+- use axe to unlock modification of chalkboard
