@@ -14,5 +14,3 @@ this mod adds a chalkboard block and a chalk item that can be dyed any color
 
 ## Mechanics
 Use chalk on chalkboard to draw, use sponge to clear it, or use a wet sponge to clear bigger area
-## Mechanics
-Use chalk on chalkboard to draw, use sponge to clear it, or use a wet sponge to clear bigger area
