@@ -59,8 +59,8 @@ public class ChalkboardMod implements ModInitializer {
     }
 
     private static class LastPoint {
+        Vec3 worldHit;
         BlockPos pos;
-        int x, y;
         long tick;
     }
 
@@ -101,21 +101,7 @@ public class ChalkboardMod implements ModInitializer {
                                 item == Items.WET_SPONGE)) return;
 
                         var state = level.getBlockState(pos);
-                        var facing = state.getValue(ChalkboardBlock.FACING);
-
-                        var relativeHit = payload.hit().subtract(pos.getX(), pos.getY(), pos.getZ());
-
-                        double u = switch (facing) {
-                            case SOUTH -> 1.0 - relativeHit.x;
-                            case WEST  -> 1.0 - relativeHit.z;
-                            case EAST  -> relativeHit.z;
-                            default    -> relativeHit.x;
-                        };
-
-                        double v = relativeHit.y;
-
-                        int px = Math.max(0, Math.min(15, (int)(u * 16)));
-                        int py = 15 - Math.max(0, Math.min(15, (int)(v * 16)));
+                        var hit = payload.hit();
 
                         long currentTick = level.getGameTime();
 
@@ -124,25 +110,29 @@ public class ChalkboardMod implements ModInitializer {
                         boolean changedAny = false;
 
                         if (last != null && currentTick - last.tick <= 1) {
-                            int dx = px - last.x;
-                            int dy = py - last.y;
 
-                            int steps = Math.max(Math.abs(dx), Math.abs(dy));
+                            // Only interpolate if both hits are roughly on same plane
+                            if (last.pos.closerThan(pos, 2.0)) {
 
-                            for (int i = 0; i <= steps; i++) {
-                                int x = last.x + dx * i / steps;
-                                int y = last.y + dy * i / steps;
+                                Vec3 delta = hit.subtract(last.worldHit);
+                                int steps = (int)(delta.length() * 16);
 
-                                changedAny |= applyPixel(level, pos, player, stack, x, y);
+                                for (int i = 0; i <= steps; i++) {
+                                    Vec3 stepPos = last.worldHit.add(delta.scale(i / (double) steps));
+                                    changedAny |= applyAtWorld(level, player, stack, stepPos, i == 0);
+                                }
+
+                            } else {
+                                changedAny |= applyAtWorld(level, player, stack, hit, true);
                             }
+
                         } else {
-                            changedAny |= applyPixel(level, pos, player, stack, px, py);
+                            changedAny |= applyAtWorld(level, player, stack, hit, true);
                         }
 
                         LastPoint now = new LastPoint();
+                        now.worldHit = hit;
                         now.pos = pos;
-                        now.x = px;
-                        now.y = py;
                         now.tick = currentTick;
                         LAST_POINTS.put(player, now);
 
@@ -154,43 +144,49 @@ public class ChalkboardMod implements ModInitializer {
         );
     }
 
-    private static boolean applyPixel(Level level, BlockPos pos, Player player, ItemStack stack, int x, int y) {
-        BlockPos currentPos = pos;
-        int px = x;
-        int py = y;
+    private static boolean applyAtWorld(Level level, Player player, ItemStack stack, Vec3 hit, boolean allowRadius) {
+        BlockPos pos = BlockPos.containing(hit);
 
-        while (px < 0 || px > 15) {
-            if (px < 0) {
-                currentPos = currentPos.relative(Direction.WEST);
-                px += 16;
-            } else {
-                currentPos = currentPos.relative(Direction.EAST);
-                px -= 16;
-            }
-        }
+        if (!(level.getBlockState(pos).getBlock() instanceof ChalkboardBlock)) return false;
+        if (!(level.getBlockEntity(pos) instanceof ChalkboardBlockEntity cbe)) return false;
 
-        while (py < 0 || py > 15) {
-            if (py < 0) {
-                currentPos = currentPos.relative(Direction.DOWN);
-                py += 16;
-            } else {
-                currentPos = currentPos.relative(Direction.UP);
-                py -= 16;
-            }
-        }
+        var state = level.getBlockState(pos);
+        var facing = state.getValue(ChalkboardBlock.FACING);
 
-        if (!(level.getBlockEntity(currentPos) instanceof ChalkboardBlockEntity cbe)) return false;
+        var relative = hit.subtract(pos.getX(), pos.getY(), pos.getZ());
 
-        int index = py * 16 + px;
-        int oldColor = cbe.getPixels()[index];
-        int newColor = ChalkItem.getColor(stack);
+        double u = switch (facing) {
+            case SOUTH -> 1.0 - relative.x;
+            case WEST  -> 1.0 - relative.z;
+            case EAST  -> relative.z;
+            default    -> relative.x;
+        };
 
-        if (oldColor == newColor) return false;
+        double v = relative.y;
 
-        cbe.drawPixel(px, py, newColor);
+        int px = Math.max(0, Math.min(15, (int)(u * 16)));
+        int py = 15 - Math.max(0, Math.min(15, (int)(v * 16)));
 
-        stack.hurtAndBreak(1, player, net.minecraft.world.InteractionHand.MAIN_HAND);
+        var item = stack.getItem();
 
-        return true;
+        if (item == Items.WET_SPONGE && !allowRadius) return false;
+
+        int before = cbe.getPixels()[py * 16 + px];
+
+        ChalkboardBlock.handleInteraction(
+                level,
+                pos,
+                state,
+                player,
+                net.minecraft.world.InteractionHand.MAIN_HAND,
+                stack,
+                cbe,
+                px,
+                py
+        );
+
+        int after = cbe.getPixels()[py * 16 + px];
+
+        return before != after;
     }
 }
