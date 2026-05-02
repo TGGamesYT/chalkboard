@@ -54,7 +54,9 @@ public class ChalkboardMod implements ModInitializer {
         final ResourceKey<Block> key = ResourceKey.create(Registries.BLOCK, identifier);
         return Blocks.register(key, factory, settings.setId(key));
     }
+    private static final Map<UUID, LastPoint> LAST_POINTS = new HashMap<>();
 
+    private record LastPoint(BlockPos pos, int x, int y, long tick) {}
     @Override
     public void onInitialize() {
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, ITEM_GROUP_KEY, ITEM_GROUP);
@@ -104,13 +106,76 @@ public class ChalkboardMod implements ModInitializer {
                         int px = Math.max(0, Math.min(15, (int)(u * 16)));
                         int py = 15 - Math.max(0, Math.min(15, (int)(v * 16)));
 
-                        ChalkboardBlock.handleInteraction(
-                                level, pos, state, player,
-                                net.minecraft.world.InteractionHand.MAIN_HAND,
-                                stack, cbe, px, py
-                        );
+                        UUID id = player.getUUID();
+			long currentTick = level.getGameTime();
+
+			LastPoint last = LAST_POINTS.get(id);
+
+			if (last != null
+			        && last.pos().equals(pos)
+       				&& currentTick - last.tick() <= 1) {
+
+			    drawLine(level, pos, state, player, stack, cbe,
+			            last.x(), last.y(), px, py);
+			} else {
+			    ChalkboardBlock.handleInteraction(
+			            level, pos, state, player,
+			            net.minecraft.world.InteractionHand.MAIN_HAND,
+			            stack, cbe, px, py
+			    );
+			}
+
+			LAST_POINTS.put(id, new LastPoint(pos, px, py, currentTick));
                     });
                 }
         );
     }
+private static void drawLine(Level level, BlockPos pos, BlockState state,
+                             Player player, ItemStack stack,
+                             ChalkboardBlockEntity cbe,
+                             int x0, int y0, int x1, int y1) {
+
+    int dx = Math.abs(x1 - x0);
+    int dy = Math.abs(y1 - y0);
+
+    int sx = x0 < x1 ? 1 : -1;
+    int sy = y0 < y1 ? 1 : -1;
+
+    int err = dx - dy;
+
+    while (true) {
+
+        applyPixel(level, pos, state, player, stack, cbe, x0, y0);
+
+        if (x0 == x1 && y0 == y1) break;
+
+        int e2 = 2 * err;
+
+        if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+        }
+
+        if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+private static void applyPixel(Level level, BlockPos pos, BlockState state,
+                               Player player, ItemStack stack,
+                               ChalkboardBlockEntity cbe,
+                               int px, int py) {
+
+    if (!(stack.getItem() instanceof ChalkItem chalk)) return;
+
+    int newColor = ChalkItem.getColor(stack);
+    int oldColor = cbe.getPixels()[py * 16 + px];
+
+    if (oldColor == newColor) return;
+
+    cbe.drawPixel(px, py, newColor);
+    stack.hurtAndBreak(1, player, net.minecraft.world.InteractionHand.MAIN_HAND);
+}
 }
