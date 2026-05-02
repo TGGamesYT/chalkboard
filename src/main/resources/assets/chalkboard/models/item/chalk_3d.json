@@ -1,0 +1,29 @@
+{
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"parent": "minecraft:item/handheld",
+	"textures": {
+		"layer0": "chalkboard:item/chalk_3d"
+	},
+	"elements": [
+		{
+			"from": [7, 4, 7],
+			"to": [9, 12, 9],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 4, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 2, 8], "texture": "#layer0", "tintindex": 0},
+				"east": {"uv": [2, 0, 4, 8], "texture": "#layer0", "tintindex": 0},
+				"south": {"uv": [4, 0, 6, 8], "texture": "#layer0", "tintindex": 0},
+				"west": {"uv": [6, 0, 8, 8], "texture": "#layer0", "tintindex": 0},
+				"up": {"uv": [8, 0, 10, 2], "texture": "#layer0", "tintindex": 0},
+				"down": {"uv": [8, 2, 10, 4], "texture": "#layer0", "tintindex": 0}
+			}
+		}
+	],
+	"display": {
+		"head": {
+			"rotation": [ -60, 0, 0 ],
+			"translation": [ 0, 5, -9]
+		}
+	}
+}

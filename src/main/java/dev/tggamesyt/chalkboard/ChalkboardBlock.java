@@ -3,11 +3,12 @@ package dev.tggamesyt.chalkboard;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.sounds.SoundEvent;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -22,18 +23,22 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Random;
 
 public class ChalkboardBlock extends BaseEntityBlock {
 
     public static final MapCodec<ChalkboardBlock> CODEC = simpleCodec(ChalkboardBlock::new);
     public static final EnumProperty<Direction> FACING = HorizontalDirectionalBlock.FACING;
-
+    public static final BooleanProperty WAXED = BooleanProperty.create("waxed");
     private static final VoxelShape SH_NORTH = Block.box(0, 0, 6, 16, 16, 10);
     private static final VoxelShape SH_SOUTH = Block.box(0, 0, 6, 16, 16, 10);
     private static final VoxelShape SH_WEST  = Block.box(6, 0, 0, 10, 16, 16);
@@ -41,14 +46,16 @@ public class ChalkboardBlock extends BaseEntityBlock {
 
     public ChalkboardBlock(BlockBehaviour.Properties p) {
         super(p);
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH));
+        registerDefaultState(stateDefinition.any()
+                .setValue(FACING, Direction.NORTH)
+                .setValue(WAXED, false));
     }
 
     @Override protected MapCodec<? extends BaseEntityBlock> codec() { return CODEC; }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> b) {
-        b.add(FACING);
+        b.add(FACING, WAXED);
     }
 
     @Override
@@ -81,20 +88,33 @@ public class ChalkboardBlock extends BaseEntityBlock {
 
         Item item = stack.getItem();
 
-        // 🎨 CHALK
+        if (item == Items.HONEYCOMB) {
+            level.setBlock(pos, state.setValue(WAXED, true), Block.UPDATE_ALL);
+            level.playSound(null, pos, SoundEvents.HONEYCOMB_WAX_ON, SoundSource.BLOCKS, 1.0f, 1.0f);
+            spawnFaceParticles(level, pos, state, ParticleTypes.WAX_ON);
+            if (!player.getAbilities().instabuild) stack.shrink(1);
+            return;
+        }
+
+        if (state.getValue(WAXED)) {
+            if (stack.is(ItemTags.AXES)) {
+                level.setBlock(pos, state.setValue(WAXED, false), Block.UPDATE_ALL);
+                level.playSound(null, pos, SoundEvents.AXE_WAX_OFF, SoundSource.BLOCKS, 1.0f, 1.0f);
+                spawnFaceParticles(level, pos, state, ParticleTypes.WAX_OFF);
+                stack.hurtAndBreak(1, player, hand);
+            }
+            return;
+        }
+
         if (item instanceof ChalkItem) {
             int newColor = ChalkItem.getColor(stack);
             int oldColor = cbe.getPixels()[py * 16 + px];
 
-            if (oldColor == newColor) return;
-
-            cbe.drawPixel(px, py, newColor);
-            stack.hurtAndBreak(1, player, hand);
-
-            level.playSound(null, pos,
-                    SoundEvents.CALCITE_PLACE,
-                    SoundSource.BLOCKS,
-                    1.0f, 1.0f);
+            if (oldColor != newColor) {
+                cbe.drawPixel(px, py, newColor);
+                stack.hurtAndBreak(1, player, hand);
+                level.playSound(null, pos, SoundEvents.CALCITE_PLACE, SoundSource.BLOCKS, 1.0f, 1.0f);
+            }
         }
 
         else if (item == Items.SPONGE || item == Items.WET_SPONGE) {
@@ -114,6 +134,61 @@ public class ChalkboardBlock extends BaseEntityBlock {
         level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
     }
 
+    private static void spawnFaceParticles(Level level, BlockPos pos, BlockState state, net.minecraft.core.particles.ParticleOptions particle) {
+        if (!(level instanceof net.minecraft.server.level.ServerLevel serverLevel)) return;
+
+        Random r = new Random();
+        Direction dir = state.getValue(FACING);
+
+        Vec3 origin = Vec3.atLowerCornerOf(pos).add(0.5, 0.5, 0.5);
+
+        Vec3 u;
+        Vec3 v;
+        Vec3 n;
+
+        switch (dir) {
+            case NORTH -> {
+                u = new Vec3(1, 0, 0);
+                v = new Vec3(0, 1, 0);
+                n = new Vec3(0, 0, -1);
+            }
+            case SOUTH -> {
+                u = new Vec3(-1, 0, 0);
+                v = new Vec3(0, 1, 0);
+                n = new Vec3(0, 0, 1);
+            }
+            case WEST -> {
+                u = new Vec3(0, 0, 1);
+                v = new Vec3(0, 1, 0);
+                n = new Vec3(-1, 0, 0);
+            }
+            default -> {
+                u = new Vec3(0, 0, -1);
+                v = new Vec3(0, 1, 0);
+                n = new Vec3(1, 0, 0);
+            }
+        }
+
+
+        for (int i = 0; i < 8; i++) {
+            double fu = (r.nextDouble() - 0.5);
+            double fv = (r.nextDouble() - 0.5);
+
+            Vec3 spawn = origin
+                    .add(u.scale(fu))
+                    .add(v.scale(fv))
+                    .add(n.scale(3.0/16.0));
+
+            serverLevel.sendParticles(
+                    particle,
+                    spawn.x, spawn.y, spawn.z,
+                    1,
+                    0, 0, 0,
+                    0
+            );
+        }
+    }
+
     @Override
     protected InteractionResult useItemOn(ItemStack stack, BlockState state,
                                           Level level, BlockPos pos, Player player,
@@ -121,11 +196,20 @@ public class ChalkboardBlock extends BaseEntityBlock {
                                           BlockHitResult hit) {
 
         Item item = stack.getItem();
+        boolean waxed = state.getValue(ChalkboardBlock.WAXED);
 
-        if (!(item instanceof ChalkItem ||
-                item == Items.SPONGE ||
-                item == Items.WET_SPONGE)) {
-            return InteractionResult.PASS;
+        boolean isChalk = item instanceof ChalkItem;
+        boolean isSponge = item == Items.SPONGE;
+        boolean isWetSponge = item == Items.WET_SPONGE;
+        boolean isHoneycomb = item == Items.HONEYCOMB;
+        boolean isAxe = stack.is(ItemTags.AXES);
+
+        if (waxed) {
+            if (!isAxe) return InteractionResult.PASS;
+        } else {
+            if (!(isChalk || isSponge || isWetSponge || isHoneycomb)) {
+                return InteractionResult.PASS;
+            }
         }
 
         if (level.isClientSide()) return InteractionResult.SUCCESS;
@@ -152,5 +236,10 @@ public class ChalkboardBlock extends BaseEntityBlock {
         handleInteraction(level, pos, state, player, hand, stack, cbe, px, py);
 
         return InteractionResult.SUCCESS;
+    }
+
+    @Override
+    public boolean useShapeForLightOcclusion(BlockState state) {
+        return false;
     }
 }

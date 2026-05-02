@@ -8,6 +8,8 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.DyedItemColor;
@@ -46,6 +48,9 @@ public class ChalkboardClient implements ClientModInitializer {
 					new ChalkboardUsePayload(hit.getBlockPos(), hit.getLocation())
 			);
 		});
-
+		ThirdpersonModelRegisterer.register(
+				Identifier.fromNamespaceAndPath(ChalkboardMod.ID, "chalk"),
+				Identifier.fromNamespaceAndPath(ChalkboardMod.ID, "chalk_3d")
+		);
 	}
 }

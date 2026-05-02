@@ -1,40 +1,51 @@
 {
-  "parent": "minecraft:block/block",
-  "textures": {
-    "front": "chalkboard:block/chalkboard_front",
-    "side": "chalkboard:block/chalkboard_side",
-    "particle": "chalkboard:block/chalkboard_side"
-  },
-  "elements": [
-    {
-      "from": [0, 0, 6],
-      "to": [16, 16, 10],
-      "faces": {
-        "north": {
-          "texture": "#front",
-          "cullface": "north"
-        },
-        "south": {
-          "texture": "#side",
-          "cullface": "south"
-        },
-        "east": {
-          "texture": "#side",
-          "cullface": "east"
-        },
-        "west": {
-          "texture": "#side",
-          "cullface": "west"
-        },
-        "up": {
-          "texture": "#side",
-          "cullface": "up"
-        },
-        "down": {
-          "texture": "#side",
-          "cullface": "down"
-        }
-      }
-    }
-  ]
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"parent": "minecraft:block/block",
+	"textures": {
+		"front": "chalkboard:block/chalkboard_front",
+		"particle": "chalkboard:block/chalkboard_side",
+		"side": "chalkboard:block/chalkboard_side"
+	},
+	"elements": [
+		{
+			"from": [0, 0, 6],
+			"to": [16, 16, 10],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#front", "cullface": "north"},
+				"east": {"uv": [6, 0, 10, 16], "texture": "#side", "cullface": "east"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#side", "cullface": "south"},
+				"west": {"uv": [6, 0, 10, 16], "texture": "#side", "cullface": "west"},
+				"up": {"uv": [0, 6, 16, 10], "texture": "#side", "cullface": "up"},
+				"down": {"uv": [0, 6, 16, 10], "texture": "#side", "cullface": "down"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [0, 90, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [0, 90, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"firstperson_righthand": {
+			"rotation": [0, 130, 0],
+			"translation": [0, 3, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"firstperson_lefthand": {
+			"rotation": [0, 130, 0],
+			"translation": [0, 3, 0],
+			"scale": [0.5, 0.5, 0.5]
+		},
+		"ground": {
+			"translation": [0, 2, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"head": {
+			"scale": [0.81, 0.81, 3.3]
+		}
+	}
 }
