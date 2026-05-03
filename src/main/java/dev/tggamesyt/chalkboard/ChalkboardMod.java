@@ -136,6 +136,14 @@ public class ChalkboardMod implements ModInitializer {
                     });
                 }
         );
+	ChalkboardBlockEntity.TYPE = Registry.register(
+	        BuiltInRegistries.BLOCK_ENTITY_TYPE,
+	        Identifier.fromNamespaceAndPath(ID, "chalkboard_be"),
+	        FabricBlockEntityTypeBuilder.create(
+	                ChalkboardBlockEntity::new,
+	                CHALKBOARD
+	        ).build()
+	);
     }
 
     private static boolean apply(Level level, Player player, ItemStack stack, BlockState state, Vec3 hit) {

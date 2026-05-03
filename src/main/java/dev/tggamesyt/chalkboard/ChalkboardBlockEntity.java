@@ -6,7 +6,6 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -18,19 +17,15 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
-
 public class ChalkboardBlockEntity extends BlockEntity {
 
-    public static final BlockEntityType<ChalkboardBlockEntity> TYPE = register();
+    public static BlockEntityType<ChalkboardBlockEntity> TYPE;
 
-    private final int[] pixels = new int[256]; // 16*16
+    private final int[] pixels = new int[256];
 
     public ChalkboardBlockEntity(BlockPos pos, BlockState state) {
         super(TYPE, pos, state);
     }
-
-    // ── Drawing ───────────────────────────────────────────────────────────────
 
     public void drawPixel(int x, int y, int argb) {
         if (x < 0 || x > 15 || y < 0 || y > 15) return;
@@ -54,9 +49,9 @@ public class ChalkboardBlockEntity extends BlockEntity {
         setChanged();
     }
 
-    public int[] getPixels() { return pixels; }
-
-    // ── NBT ───────────────────────────────────────────────────────────────────
+    public int[] getPixels() {
+        return pixels;
+    }
 
     @Override
     protected void saveAdditional(ValueOutput output) {
@@ -73,8 +68,6 @@ public class ChalkboardBlockEntity extends BlockEntity {
         }
     }
 
-    // ── Sync ──────────────────────────────────────────────────────────────────
-
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider reg) {
         return saveWithoutMetadata(reg);
@@ -83,15 +76,5 @@ public class ChalkboardBlockEntity extends BlockEntity {
     @Override
     public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
-    }
-
-    private static BlockEntityType<ChalkboardBlockEntity> register() {
-        return Registry.register(
-                BuiltInRegistries.BLOCK_ENTITY_TYPE,
-                Identifier.fromNamespaceAndPath(ChalkboardMod.ID, "chalkboard_be"),
-                FabricBlockEntityTypeBuilder.create(ChalkboardBlockEntity::new,
-                        ChalkboardMod.CHALKBOARD
-                ).build()
-        );
     }
 }
