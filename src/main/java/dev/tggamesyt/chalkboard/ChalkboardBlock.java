@@ -242,4 +242,17 @@ public class ChalkboardBlock extends BaseEntityBlock {
     public boolean useShapeForLightOcclusion(BlockState state) {
         return false;
     }
+
+    @Override
+    protected boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    @Override
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
+        if (level.getBlockEntity(pos) instanceof ChalkboardBlockEntity cbe) {
+            return cbe.getComparatorOutput();
+        }
+        return 0;
+    }
 }

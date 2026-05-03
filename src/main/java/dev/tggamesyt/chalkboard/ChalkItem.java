@@ -8,6 +8,7 @@ import net.minecraft.world.item.*;
 import net.minecraft.world.item.component.Consumable;
 import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.item.component.TooltipDisplay;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -22,25 +23,59 @@ public class ChalkItem extends Item {
 
     public static int getColor(ItemStack stack) {
         DyedItemColor c = stack.get(DataComponents.DYED_COLOR);
-        return (c != null ? c.rgb() : DEFAULT_COLOR) | 0xFF000000;
+        int color = (c != null ? c.rgb() : DEFAULT_COLOR);
+
+        return color & 0xFFFFFF;
     }
 
-    public static void applyDye(ItemStack stack, DyeColor dye) {
-        stack.set(DataComponents.DYED_COLOR,
-            new DyedItemColor(dye.getTextureDiffuseColor()));
-    }
 
-    public static void applyRgb(ItemStack stack, int rgb) {
-        stack.set(DataComponents.DYED_COLOR,
-            new DyedItemColor(rgb | 0xFF000000));
-    }
+    private static @Nullable DyeColor getMatchingDye(int rgb) {
+        rgb &= 0xFFFFFF;
 
-    // ── Tooltip ───────────────────────────────────────────────────────────────
+        DyeColor best = null;
+        double bestDist = Double.MAX_VALUE;
+
+        for (DyeColor dye : DyeColor.values()) {
+            int d = dye.getTextureDiffuseColor() & 0xFFFFFF;
+
+            double dist =
+                    Math.pow(((rgb >> 16) & 0xFF) - ((d >> 16) & 0xFF), 2) +
+                            Math.pow(((rgb >> 8) & 0xFF) - ((d >> 8) & 0xFF), 2) +
+                            Math.pow((rgb & 0xFF) - (d & 0xFF), 2);
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                best = dye;
+            }
+        }
+
+        // threshold so random RGB doesn't become a dye
+        return bestDist < 2000 ? best : null;
+    }
 
     @Override
-    public void appendHoverText(final ItemStack stack, final TooltipContext context, final TooltipDisplay display, final Consumer<Component> builder, final TooltipFlag tooltipFlag) {
-        int argb = getColor(stack);
-        String hex = String.format("#%06X", argb & 0xFFFFFF);
-        builder.accept(Component.literal("Color: " + hex).withStyle(ChatFormatting.GRAY));
+    public void appendHoverText(ItemStack stack, TooltipContext context,
+                                TooltipDisplay display,
+                                Consumer<Component> builder,
+                                TooltipFlag tooltipFlag) {
+
+        // 🔥 Prevent duplicate tooltip calls
+        if (tooltipFlag.isAdvanced()) return;
+
+        int rgb = getColor(stack);
+        DyeColor dye = getMatchingDye(rgb);
+
+        if (dye != null) {
+            builder.accept(Component.literal("Color: " + capitalize(dye.getName()))
+                    .withStyle(ChatFormatting.GRAY));
+        } else {
+            String hex = String.format("#%06X", rgb);
+            builder.accept(Component.literal("Color: " + hex)
+                    .withStyle(ChatFormatting.GRAY));
+        }
+    }
+
+    private static String capitalize(String s) {
+        return s.substring(0, 1).toUpperCase() + s.substring(1);
     }
 }

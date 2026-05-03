@@ -77,4 +77,16 @@ public class ChalkboardBlockEntity extends BlockEntity {
     public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
     }
+
+    public int getComparatorOutput() {
+        int filled = 0;
+
+        for (int p : pixels) {
+            if (p != 0) filled++;
+        }
+
+        float ratio = filled / 256f;
+
+        return (int)(ratio * 15);
+    }
 }

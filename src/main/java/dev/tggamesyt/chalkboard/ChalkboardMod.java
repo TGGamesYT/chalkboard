@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityT
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -16,6 +17,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
+import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -72,7 +74,18 @@ public class ChalkboardMod implements ModInitializer {
 
         CreativeModeTabEvents.modifyOutputEvent(ITEM_GROUP_KEY).register(entries -> {
             entries.accept(CHALKBOARD_ITEM);
-            entries.accept(CHALK_ITEM);
+            for (DyeColor dye : DyeColor.values()) {
+                ItemStack stack = new ItemStack(CHALK_ITEM);
+
+                int rgb = dye.getTextureDiffuseColor() & 0xFFFFFF;
+
+                stack.set(DataComponents.DYED_COLOR, new DyedItemColor(rgb));
+
+                entries.accept(stack);
+            }
+            entries.accept(Items.HONEYCOMB);
+            entries.accept(Items.SPONGE);
+            entries.accept(Items.WET_SPONGE);
         });
 
         PayloadTypeRegistry.serverboundPlay().register(
