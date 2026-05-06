@@ -80,11 +80,12 @@ public class ChalkboardBlock extends BaseEntityBlock {
         return new ChalkboardBlockEntity(p, s);
     }
 
-    static void handleInteraction(Level level, BlockPos pos, BlockState state,
+    static boolean handleInteraction(Level level, BlockPos pos, BlockState state,
                                   Player player, net.minecraft.world.InteractionHand hand,
                                   ItemStack stack,
                                   ChalkboardBlockEntity cbe,
-                                  int px, int py) {
+                                  int px, int py,
+                                  boolean playSound) {
 
         Item item = stack.getItem();
 
@@ -93,7 +94,7 @@ public class ChalkboardBlock extends BaseEntityBlock {
             level.playSound(null, pos, SoundEvents.HONEYCOMB_WAX_ON, SoundSource.BLOCKS, 1.0f, 1.0f);
             spawnFaceParticles(level, pos, state, ParticleTypes.WAX_ON);
             if (!player.getAbilities().instabuild) stack.shrink(1);
-            return;
+            return true;
         }
 
         if (state.getValue(WAXED)) {
@@ -102,9 +103,12 @@ public class ChalkboardBlock extends BaseEntityBlock {
                 level.playSound(null, pos, SoundEvents.AXE_WAX_OFF, SoundSource.BLOCKS, 1.0f, 1.0f);
                 spawnFaceParticles(level, pos, state, ParticleTypes.WAX_OFF);
                 stack.hurtAndBreak(1, player, hand);
+                return true;
             }
-            return;
+            return false;
         }
+
+        boolean changed = false;
 
         if (item instanceof ChalkItem) {
             int newColor = ChalkItem.getColor(stack);
@@ -113,25 +117,33 @@ public class ChalkboardBlock extends BaseEntityBlock {
             if (oldColor != newColor) {
                 cbe.drawPixel(px, py, newColor);
                 stack.hurtAndBreak(1, player, hand);
-                level.playSound(null, pos, SoundEvents.CALCITE_PLACE, SoundSource.BLOCKS, 1.0f, 1.0f);
+                changed = true;
+                if (playSound) {
+                    level.playSound(null, pos, SoundEvents.CALCITE_PLACE, SoundSource.BLOCKS, 1.0f, 1.0f);
+                }
             }
         }
 
         else if (item == Items.SPONGE || item == Items.WET_SPONGE) {
-
             if (item == Items.WET_SPONGE) {
-                cbe.clearRadius(px, py, 1);
+                changed = cbe.clearRadius(px, py, 1);
             } else {
-                cbe.clearPixel(px, py);
+                changed = cbe.clearPixel(px, py);
             }
 
-            level.playSound(null, pos,
-                    item == Items.SPONGE ? SoundEvents.SPONGE_PLACE : SoundEvents.WET_SPONGE_PLACE,
-                    SoundSource.BLOCKS,
-                    1.0f, 1.0f);
+            if (changed && playSound) {
+                level.playSound(null, pos,
+                        item == Items.SPONGE ? SoundEvents.SPONGE_PLACE : SoundEvents.WET_SPONGE_PLACE,
+                        SoundSource.BLOCKS,
+                        1.0f, 1.0f);
+            }
         }
 
-        level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
+        if (changed) {
+            level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
+        }
+
+        return changed;
     }
 
     private static void spawnFaceParticles(Level level, BlockPos pos, BlockState state, net.minecraft.core.particles.ParticleOptions particle) {
@@ -212,6 +224,8 @@ public class ChalkboardBlock extends BaseEntityBlock {
             }
         }
 
+        if (hit.getDirection() != state.getValue(FACING)) return InteractionResult.PASS;
+
         if (level.isClientSide()) return InteractionResult.SUCCESS;
 
         if (!(level.getBlockEntity(pos) instanceof ChalkboardBlockEntity cbe)) {
@@ -233,7 +247,7 @@ public class ChalkboardBlock extends BaseEntityBlock {
         int px = Math.max(0, Math.min(15, (int)(u * 16)));
         int py = 15 - Math.max(0, Math.min(15, (int)(v * 16)));
 
-        handleInteraction(level, pos, state, player, hand, stack, cbe, px, py);
+        handleInteraction(level, pos, state, player, hand, stack, cbe, px, py, true);
 
         return InteractionResult.SUCCESS;
     }

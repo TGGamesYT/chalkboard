@@ -132,11 +132,11 @@ public class ChalkboardMod implements ModInitializer {
 
                             for (int i = 0; i <= steps; i++) {
                                 Vec3 p = a.lerp(b, i / (double) steps);
-                                changed |= apply(level, player, stack, state, p);
+                                changed |= apply(level, player, stack, p);
                             }
 
                         } else {
-                            changed |= apply(level, player, stack, state, hit);
+                            changed |= apply(level, player, stack, hit);
                         }
 
                         LastPoint lp = new LastPoint();
@@ -145,6 +145,13 @@ public class ChalkboardMod implements ModInitializer {
                         LAST.put(player, lp);
 
                         if (changed) {
+                            if (item instanceof ChalkItem) {
+                                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.CALCITE_PLACE, net.minecraft.sounds.SoundSource.BLOCKS, 1.0f, 1.0f);
+                            } else if (item == Items.SPONGE) {
+                                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.SPONGE_PLACE, net.minecraft.sounds.SoundSource.BLOCKS, 1.0f, 1.0f);
+                            } else if (item == Items.WET_SPONGE) {
+                                level.playSound(null, pos, net.minecraft.sounds.SoundEvents.WET_SPONGE_PLACE, net.minecraft.sounds.SoundSource.BLOCKS, 1.0f, 1.0f);
+                            }
                             level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
                         }
                     });
@@ -160,10 +167,11 @@ public class ChalkboardMod implements ModInitializer {
 	);
     }
 
-    private static boolean apply(Level level, Player player, ItemStack stack, BlockState state, Vec3 hit) {
+    private static boolean apply(Level level, Player player, ItemStack stack, Vec3 hit) {
         BlockPos pos = BlockPos.containing(hit);
 
-        if (!(level.getBlockState(pos).getBlock() instanceof ChalkboardBlock)) return false;
+        var state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof ChalkboardBlock)) return false;
         if (!(level.getBlockEntity(pos) instanceof ChalkboardBlockEntity cbe)) return false;
 
         var facing = state.getValue(ChalkboardBlock.FACING);
@@ -181,9 +189,7 @@ public class ChalkboardMod implements ModInitializer {
         int px = Math.max(0, Math.min(15, (int)(u * 16)));
         int py = 15 - Math.max(0, Math.min(15, (int)(v * 16)));
 
-        int before = cbe.getPixels()[py * 16 + px];
-
-        ChalkboardBlock.handleInteraction(
+        return ChalkboardBlock.handleInteraction(
                 level,
                 pos,
                 state,
@@ -192,9 +198,8 @@ public class ChalkboardMod implements ModInitializer {
                 stack,
                 cbe,
                 px,
-                py
+                py,
+                false
         );
-
-        return before != cbe.getPixels()[py * 16 + px];
     }
 }

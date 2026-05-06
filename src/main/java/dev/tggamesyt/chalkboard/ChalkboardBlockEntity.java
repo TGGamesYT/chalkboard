@@ -33,20 +33,29 @@ public class ChalkboardBlockEntity extends BlockEntity {
         setChanged();
     }
 
-    public void clearPixel(int x, int y) {
-        if (x < 0 || x > 15 || y < 0 || y > 15) return;
-        pixels[y * 16 + x] = 0;
+    public boolean clearPixel(int x, int y) {
+        if (x < 0 || x > 15 || y < 0 || y > 15) return false;
+        int idx = y * 16 + x;
+        if (pixels[idx] == 0) return false;
+        pixels[idx] = 0;
         setChanged();
+        return true;
     }
 
-    public void clearRadius(int cx, int cy, int radius) {
+    public boolean clearRadius(int cx, int cy, int radius) {
+        boolean cleared = false;
         for (int x = cx - radius; x <= cx + radius; x++) {
             for (int y = cy - radius; y <= cy + radius; y++) {
                 if (x < 0 || x > 15 || y < 0 || y > 15) continue;
-                pixels[y * 16 + x] = 0;
+                int idx = y * 16 + x;
+                if (pixels[idx] != 0) {
+                    pixels[idx] = 0;
+                    cleared = true;
+                }
             }
         }
-        setChanged();
+        if (cleared) setChanged();
+        return cleared;
     }
 
     public int[] getPixels() {

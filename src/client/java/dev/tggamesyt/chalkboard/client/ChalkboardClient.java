@@ -40,9 +40,10 @@ public class ChalkboardClient implements ClientModInitializer {
 					item == Items.SPONGE ||
 					item == Items.WET_SPONGE)) return;
 
-			// only send if looking at chalkboard
-			if (!(client.level.getBlockState(hit.getBlockPos()).getBlock()
-					instanceof dev.tggamesyt.chalkboard.ChalkboardBlock)) return;
+			// only send if looking at the drawing face of a chalkboard
+			var blockState = client.level.getBlockState(hit.getBlockPos());
+			if (!(blockState.getBlock() instanceof dev.tggamesyt.chalkboard.ChalkboardBlock)) return;
+			if (hit.getDirection() != blockState.getValue(dev.tggamesyt.chalkboard.ChalkboardBlock.FACING)) return;
 
 			ClientPlayNetworking.send(
 					new ChalkboardUsePayload(hit.getBlockPos(), hit.getLocation())
