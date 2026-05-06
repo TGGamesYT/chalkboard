@@ -2,6 +2,7 @@ package dev.tggamesyt.chalkboard;
 
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -10,6 +11,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -44,17 +46,78 @@ public class ChalkboardBlockEntity extends BlockEntity {
 
     public boolean clearRadius(int cx, int cy, int radius) {
         boolean cleared = false;
-        for (int x = cx - radius; x <= cx + radius; x++) {
-            for (int y = cy - radius; y <= cy + radius; y++) {
-                if (x < 0 || x > 15 || y < 0 || y > 15) continue;
-                int idx = y * 16 + x;
-                if (pixels[idx] != 0) {
-                    pixels[idx] = 0;
-                    cleared = true;
+
+        var level = getLevel();
+        if (level == null) return false;
+
+        var state = getBlockState();
+        var origin = getBlockPos();
+        var facing = state.getValue(ChalkboardBlock.FACING);
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+
+                int x = cx + dx;
+                int y = cy + dy;
+
+                int offsetX = 0;
+                int offsetY = 0;
+
+                // ── wrap X ──
+                while (x < 0) {
+                    x += 16;
+                    offsetX--;
+                }
+                while (x > 15) {
+                    x -= 16;
+                    offsetX++;
+                }
+
+                // ── wrap Y ──
+                while (y < 0) {
+                    y += 16;
+                    offsetY--;
+                }
+                while (y > 15) {
+                    y -= 16;
+                    offsetY++;
+                }
+
+                BlockPos targetPos = origin;
+
+                // ── horizontal (relative to facing) ──
+                if (offsetX != 0) {
+                    Direction dir = switch (facing) {
+                        case NORTH -> (offsetX < 0 ? Direction.WEST : Direction.EAST);
+                        case SOUTH -> (offsetX < 0 ? Direction.EAST : Direction.WEST);
+                        case WEST  -> (offsetX < 0 ? Direction.SOUTH : Direction.NORTH);
+                        case EAST  -> (offsetX < 0 ? Direction.NORTH : Direction.SOUTH);
+                        default    -> Direction.EAST;
+                    };
+                    targetPos = targetPos.relative(dir);
+                }
+
+                // ── vertical (fixed: pixel space → world space) ──
+                if (offsetY != 0) {
+                    targetPos = targetPos.relative(offsetY < 0
+                            ? Direction.UP
+                            : Direction.DOWN);
+                }
+
+                // ── ONLY affect matching chalkboards ──
+                var targetState = level.getBlockState(targetPos);
+                if (!(targetState.getBlock() instanceof ChalkboardBlock)) continue;
+                if (targetState.getValue(ChalkboardBlock.FACING) != facing) continue;
+
+                if (level.getBlockEntity(targetPos) instanceof ChalkboardBlockEntity other) {
+                    if (other.clearPixel(x, y)) {
+                        level.sendBlockUpdated(targetPos, targetState, targetState, Block.UPDATE_ALL);
+                        cleared = true;
+                    }
                 }
             }
         }
-        if (cleared) setChanged();
+
         return cleared;
     }
 
