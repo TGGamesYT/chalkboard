@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
+import net.fabricmc.fabric.api.registry.FuelValueEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
@@ -70,6 +71,9 @@ public class ChalkboardMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        FuelValueEvents.BUILD.register(((builder, context) -> {
+            builder.add(CHALKBOARD_ITEM, 100);
+        }));
         Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, ITEM_GROUP_KEY, ITEM_GROUP);
 
         CreativeModeTabEvents.modifyOutputEvent(ITEM_GROUP_KEY).register(entries -> {
