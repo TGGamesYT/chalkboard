@@ -27,6 +27,8 @@ public class ChalkboardClient implements ClientModInitializer {
 				ChalkboardBlockEntityRenderer::new
 		);
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			ChalkboardTextureCache.tick();
+
 			if (client.player == null || client.level == null) return;
 
 			if (!client.options.keyUse.isDown()) return;

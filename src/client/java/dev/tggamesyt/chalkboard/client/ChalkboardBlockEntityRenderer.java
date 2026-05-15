@@ -6,15 +6,13 @@ import com.mojang.math.Axis;
 import dev.tggamesyt.chalkboard.ChalkboardBlockEntity;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
-import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<ChalkboardBlockEntity, ChalkboardRenderState> {
@@ -36,27 +34,29 @@ public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<Chalkb
         }
         System.arraycopy(source, 0, state.pixels, 0, source.length);
 
-        state.hasContent = false;
-        for (int pixel : state.pixels) {
-            if (pixel != 0) {
-                state.hasContent = true;
-                break;
-            }
+        boolean hasContent = false;
+        int hash = 1;
+        for (int p : state.pixels) {
+            hash = 31 * hash + p;
+            if (p != 0) hasContent = true;
         }
-        // ChalkboardBlock.FACING is assumed to be the property name
+        state.hasContent = hasContent;
+        state.contentHash = hash;
         state.facing = be.getBlockState().getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING);
         state.lightCoords = LevelRenderer.getLightCoords(be.getLevel(), be.getBlockPos());
+
+        state.textureId = hasContent
+                ? ChalkboardTextureCache.getOrUpload(be.getBlockPos(), state.pixels, hash)
+                : null;
     }
 
     @Override
     public void submit(ChalkboardRenderState state, PoseStack ps, SubmitNodeCollector collector, CameraRenderState camera) {
-        if (!state.hasContent) return;
+        if (!state.hasContent || state.textureId == null) return;
 
-        // Use the moving block type - it's designed to stay in world coordinates
-        collector.submitCustomGeometry(ps, RenderTypes.beaconBeam(Identifier.fromNamespaceAndPath("chalkboard", "textures/etc/white.png"), false), (pose, vc) -> {
-            Matrix4f m4 = new Matrix4f(pose.pose()); // copy the snapshot
+        collector.submitCustomGeometry(ps, RenderTypes.entityCutout(state.textureId), (pose, vc) -> {
+            Matrix4f m4 = new Matrix4f(pose.pose());
 
-// apply transforms manually to the matrix
             m4.translate(0.5f, 0.5f, 0.5f);
 
             float yaw = switch (state.facing) {
@@ -66,44 +66,27 @@ public class ChalkboardBlockEntityRenderer implements BlockEntityRenderer<Chalkb
                 default    -> 0f;
             };
 
-            m4.rotate(com.mojang.math.Axis.YP.rotationDegrees(yaw));
+            m4.rotate(Axis.YP.rotationDegrees(yaw));
             m4.translate(-0.5f, -0.5f, -0.5f);
 
-// keep normals from original pose
-            PoseStack.Pose currentPose = pose;
-
             final float Z = (6f / 16f) - 0.001f;
-            final float SZ = 1f / 16f;
+            final int light = state.lightCoords;
 
-            for (int row = 0; row < 16; row++) {
-                for (int col = 0; col < 16; col++) {
-                    int argb = state.pixels[row * 16 + col];
-                    if (argb == 0) continue;
-
-                    float a = 1.0f;
-                    float r = ((argb >> 16) & 0xFF) / 255f;
-                    float g = ((argb >> 8) & 0xFF) / 255f;
-                    float b = (argb & 0xFF) / 255f;
-
-                    float x0 = col * SZ, x1 = x0 + SZ;
-                    float y0 = 1f - (row + 1) * SZ, y1 = y0 + SZ;
-
-                    vert(vc, m4, currentPose, x0, y1, Z, r, g, b, a, state.lightCoords);
-                    vert(vc, m4, currentPose, x1, y1, Z, r, g, b, a, state.lightCoords);
-                    vert(vc, m4, currentPose, x1, y0, Z, r, g, b, a, state.lightCoords);
-                    vert(vc, m4, currentPose, x0, y0, Z, r, g, b, a, state.lightCoords);
-                }
-            }
+            vert(vc, m4, pose, 0f, 1f, Z, 0f, 0f, light);
+            vert(vc, m4, pose, 1f, 1f, Z, 1f, 0f, light);
+            vert(vc, m4, pose, 1f, 0f, Z, 1f, 1f, light);
+            vert(vc, m4, pose, 0f, 0f, Z, 0f, 1f, light);
         });
     }
 
     private static void vert(VertexConsumer v, Matrix4f m4, PoseStack.Pose pose,
                              float x, float y, float z,
-                             float r, float g, float b, float a, int light) {
+                             float u, float w, int light) {
         v.addVertex(m4, x, y, z)
-                .setColor(r, g, b, a)
-                .setUv(0f, 0f)         // Blocks need UVs even if they are solid colors
-                .setLight(light)       // This keeps it from being pitch black or "full bright"
-                .setNormal(pose, 0f, 0f, 1f); // Faces the player
+                .setColor(1f, 1f, 1f, 1f)
+                .setUv(u, w)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(light)
+                .setNormal(pose, 0f, 0f, 1f);
     }
 }
